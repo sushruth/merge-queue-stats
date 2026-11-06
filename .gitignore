@@ -6,3 +6,4 @@ coverage
 *.local
 *.tsbuildinfo
 .DS_Store
+.wrangler

@@ -1,0 +1,8 @@
+name = "merge-queue-stats"
+account_id = "64831a2b80653981fc5f32bf2ea9121c"
+compatibility_date = "2026-11-01"
+workers_dev = false
+routes = [{ pattern = "mergeq.frustrated.dev", custom_domain = true }]
+
+[assets]
+directory = "./dist"
