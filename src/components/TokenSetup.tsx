@@ -16,7 +16,6 @@ function tokenCommand(userAgent: string): string {
 export function TokenSetup({ compact }: { compact: boolean }) {
   const hasToken = useAuth((s) => s.token !== null);
   const setToken = useAuth((s) => s.setToken);
-  const saveResult = useAuth((s) => s.saveResult);
   const authError = useData((s) => s.authError);
   const repo = useSettings((s) => s.repo);
   const [draft, setDraft] = useState('');
@@ -32,9 +31,7 @@ export function TokenSetup({ compact }: { compact: boolean }) {
   };
 
   if (hasToken && !authError) {
-    return saveResult === 'ok' ? null : (
-      <p class="note" role="alert">This browser could not store the token. It lasts until you reload.</p>
-    );
+    return null;
   }
 
   return (
@@ -84,7 +81,7 @@ export function TokenSetup({ compact }: { compact: boolean }) {
         {note && <p class="note" role="status">{note}</p>}
       </form>
       <p class="quiet">
-        The token stays in this browser and only goes to api.github.com. It has the same access as your gh login. For
+        The token stays in memory and only goes to api.github.com. It has the same access as your gh login. For
         read-only access, <a href={FINE_GRAINED_URL} target="_blank" rel="noreferrer">create a fine-grained token</a>{' '}
         that can read pull requests, metadata and actions.
       </p>

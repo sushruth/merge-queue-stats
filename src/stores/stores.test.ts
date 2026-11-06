@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cacheKey, TOKEN_KEY } from '../core/storage';
+import { cacheKey } from '../core/storage';
 import { useAuth } from './auth';
 import { startApp } from './bootstrap';
 import { useData } from './data';
@@ -95,12 +95,12 @@ describe('stores', () => {
     const key = cacheKey('attempts', 'acme/widgets', 'main');
     localStorage.setItem(key, JSON.stringify({ prs: { 1: [[1, 2, 'merged']] } }));
     useSettings.getState().setRepo('acme/widgets', 'main');
-    useAuth.getState().setToken('t');
+    const writes = vi.spyOn(localStorage, 'setItem');
+    useAuth.getState().setToken('secret-token');
     await settle();
-    expect(localStorage.getItem(TOKEN_KEY)).toBe('t');
+    expect(writes.mock.calls.flat().join()).not.toContain('secret-token');
 
     useAuth.getState().clearToken();
-    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
     expect(useAuth.getState().token).toBeNull();
     expect(localStorage.getItem(key)).toContain('"1"');
     expect(Object.keys(useData.getState().attempts.prs)).toEqual(['1']);
@@ -186,7 +186,6 @@ describe('stores', () => {
     quota().quotaExceeded = true;
     useAuth.getState().setToken('t');
     await settle();
-    expect(useAuth.getState().saveResult).toBe('quota');
     expect(useData.getState().storageError).toBe('quota');
     expect(useData.getState().attempts.backfillDone).toBe(true);
   });

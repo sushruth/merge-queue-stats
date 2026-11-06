@@ -1,6 +1,5 @@
 export type WriteResult = 'ok' | 'quota' | 'unavailable';
 
-export const TOKEN_KEY = 'mqs:token';
 export const SETTINGS_KEY = 'mqs:settings';
 
 export type CacheKind = 'attempts' | 'runs' | 'live';
