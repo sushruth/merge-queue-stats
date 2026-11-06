@@ -2,7 +2,6 @@ import { Trash } from '@phosphor-icons/react';
 import { useMemo, useState } from 'preact/hooks';
 import { workflowLabels } from '../core/options';
 import { useAuth } from '../stores/auth';
-import { useData } from '../stores/data';
 import type { Derived } from '../stores/derived';
 import { useOptions } from '../stores/options';
 import { useSettings } from '../stores/settings';
@@ -88,62 +87,5 @@ export function ForgetToken() {
     <button type="button" class="bare" aria-label="Forget token" title="Forget token" onClick={clearToken}>
       <Trash size={18} aria-hidden="true" />
     </button>
-  );
-}
-
-export function TokenControls() {
-  const hasToken = useAuth((s) => s.token !== null);
-  const setToken = useAuth((s) => s.setToken);
-  const saveResult = useAuth((s) => s.saveResult);
-  const authError = useData((s) => s.authError);
-  const [draft, setDraft] = useState('');
-  const [note, setNote] = useState('');
-
-  const submit = (ev: Event): void => {
-    ev.preventDefault();
-    const value = draft.trim();
-    if (!value) {
-      setNote('Paste a token first, then press Enter.');
-      return;
-    }
-    setNote('');
-    setDraft('');
-    setToken(value);
-  };
-
-  if (hasToken && !authError && saveResult === 'ok') return null;
-  return (
-    <div class="token">
-      {(!hasToken || authError) && (
-        <form class="controls" onSubmit={submit}>
-          <label class="field">
-            <span>GitHub token</span>
-            <input
-              type="text"
-              class="masked"
-              size={36}
-              spellcheck={false}
-              autocomplete="off"
-              autocapitalize="off"
-              data-1p-ignore
-              data-lpignore="true"
-              value={draft}
-              onInput={(ev) => setDraft(ev.currentTarget.value)}
-            />
-          </label>
-          <button type="submit" class="bare">Use token</button>
-        </form>
-      )}
-      {(!hasToken || authError) && (
-        <p class="quiet">
-          The token stays in this browser and only goes to api.github.com. It needs read access to the
-          repo's pull requests, metadata and actions.
-        </p>
-      )}
-      {saveResult !== 'ok' && hasToken && (
-        <p class="note" role="alert">This browser could not store the token. It lasts until you reload.</p>
-      )}
-      {note && <p class="note" role="status">{note}</p>}
-    </div>
   );
 }

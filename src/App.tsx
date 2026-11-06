@@ -1,14 +1,15 @@
 import { DAY_MS } from './core/attempts';
 import { fmtDay, fmtMin, fmtPct } from './core/format';
 import { Tooltip } from './components/Tooltip';
-import { ForgetToken, RepoControls, TokenControls } from './components/Controls';
+import { ForgetToken, RepoControls } from './components/Controls';
 import { DayChart } from './components/DayChart';
 import { LineChart } from './components/LineChart';
 import { PrChart } from './components/PrChart';
 import { ShareButton } from './components/ShareButton';
 import { Stats } from './components/Stats';
-import { Status } from './components/Status';
+import { Status, StatusFacts } from './components/Status';
 import { HistoryTables, LiveTable } from './components/Tables';
+import { TokenSetup } from './components/TokenSetup';
 import { useData } from './stores/data';
 import { useDerived } from './stores/derived';
 import { usePhase } from './stores/phase';
@@ -36,13 +37,14 @@ export function App() {
           Merge Queue Stats
         </h1>
         <RepoControls derived={derived} />
+        <StatusFacts />
         <span class="header-actions">
           <ShareButton />
           <ForgetToken />
         </span>
       </header>
-      <TokenControls />
       <Status />
+      <TokenSetup compact={attempts.length > 0} />
       {attempts.length > 0 ? (
         <>
           <Stats derived={derived} />
