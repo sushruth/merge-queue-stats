@@ -1,4 +1,3 @@
-import { SignOut } from '@phosphor-icons/react';
 import { useMemo, useState } from 'preact/hooks';
 import { workflowLabels } from '../core/options';
 import { useAuth } from '../stores/auth';
@@ -84,8 +83,8 @@ export function LogOut() {
   const logOut = useAuth((s) => s.logOut);
   if (!signedIn) return null;
   return (
-    <button type="button" class="bare" aria-label="Log out" title="Log out" onClick={() => void logOut()}>
-      <SignOut size={18} aria-hidden="true" />
+    <button type="button" class="bare" onClick={() => void logOut()}>
+      Log out
     </button>
   );
 }
