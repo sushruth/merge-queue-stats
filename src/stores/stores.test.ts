@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cacheKey } from '../core/storage';
-import { isInstalled, useAuth } from './auth';
+import { isInstalled, needsInstall, useAuth } from './auth';
 import { startApp } from './bootstrap';
 import { useData } from './data';
 import { useSettings } from './settings';
@@ -54,7 +54,7 @@ describe('stores', () => {
     vi.setSystemTime(NOW);
     quota().clear();
     useSettings.setState({ repo: null, branch: null, workflowByRepo: {} });
-    useAuth.setState({ status: 'signed_out', login: null, accounts: [], owner: null, token: null, tokenError: null });
+    useAuth.setState({ status: 'signed_out', login: null, accounts: [], owner: null, token: null, tokenError: null, installCheck: 'idle' });
     stop = startApp();
   });
   afterEach(() => {
@@ -148,6 +148,94 @@ describe('stores', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(useAuth.getState().token).toBeNull();
     expect(isInstalled(useAuth.getState())).toBe(false);
+  });
+
+  describe('installing the GitHub App', () => {
+    const stubMe = (...replies: { login: string; type: string }[][]) => {
+      const calls: string[] = [];
+      const fetch = vi.fn(async (url: string) => {
+        calls.push(url);
+        if (url.endsWith('/token')) return new Response(JSON.stringify({ token: 'scoped', expires_at: null }));
+        const accounts = replies.length > 1 ? replies.shift() : replies[0];
+        return new Response(JSON.stringify({ login: 'me', accounts }));
+      });
+      vi.stubGlobal('fetch', fetch);
+      return calls;
+    };
+    const acme = { login: 'acme', type: 'Organization' };
+
+    it('shows the guide when the login has no accounts', async () => {
+      stubMe([]);
+      await useAuth.getState().checkLogin();
+      await settle();
+      expect(needsInstall(useAuth.getState())).toBe(true);
+    });
+
+    it('shows the guide when the viewed owner is not among the accounts', async () => {
+      stubMe([{ login: 'other', type: 'User' }]);
+      useSettings.getState().setRepo('acme/widgets');
+      await useAuth.getState().checkLogin();
+      await settle();
+      expect(needsInstall(useAuth.getState())).toBe(true);
+    });
+
+    it('hides the guide when signed out', () => {
+      expect(needsInstall(useAuth.getState())).toBe(false);
+    });
+
+    it('moves on and gets a token when a re-check finds the viewed owner', async () => {
+      stubMe([], [acme]);
+      useSettings.getState().setRepo('acme/widgets');
+      await useAuth.getState().checkLogin();
+      await settle();
+      await useAuth.getState().recheckInstall();
+      await settle();
+      expect(needsInstall(useAuth.getState())).toBe(false);
+      expect(useAuth.getState().installCheck).toBe('idle');
+      expect(useAuth.getState().token).toBe('scoped');
+    });
+
+    it('moves on when a re-check finds an account and no repo is chosen', async () => {
+      const calls = stubMe([], [acme]);
+      await useAuth.getState().checkLogin();
+      await settle();
+      await useAuth.getState().recheckInstall();
+      await settle();
+      expect(useAuth.getState().owner).toBe('acme');
+      expect(needsInstall(useAuth.getState())).toBe(false);
+      expect(useAuth.getState().token).toBe('scoped');
+      expect(calls.filter((url) => url.endsWith('/token'))).toHaveLength(1);
+    });
+
+    it('stays on the guide and says so when a re-check finds nothing', async () => {
+      stubMe([]);
+      await useAuth.getState().checkLogin();
+      await settle();
+      const check = useAuth.getState().recheckInstall();
+      expect(useAuth.getState().installCheck).toBe('checking');
+      await check;
+      expect(useAuth.getState().installCheck).toBe('not_found');
+      expect(needsInstall(useAuth.getState())).toBe(true);
+    });
+
+    it('stays signed in when a re-check cannot reach the login service', async () => {
+      stubMe([]);
+      await useAuth.getState().checkLogin();
+      await settle();
+      vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('network'); }));
+      await useAuth.getState().recheckInstall();
+      expect(useAuth.getState().status).toBe('signed_in');
+      expect(useAuth.getState().installCheck).toBe('failed');
+    });
+
+    it('shows the login when a re-check finds the session gone', async () => {
+      stubMe([]);
+      await useAuth.getState().checkLogin();
+      await settle();
+      vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })));
+      await useAuth.getState().recheckInstall();
+      expect(useAuth.getState().status).toBe('signed_out');
+    });
   });
 
   it('shows the login when the service says not signed in', async () => {

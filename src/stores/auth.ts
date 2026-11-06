@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { fetchMe, fetchToken, logOut, NotSignedInError, type Account } from '../core/auth';
 
 export type LoginStatus = 'checking' | 'signed_out' | 'signed_in' | 'unavailable';
+export type InstallCheck = 'idle' | 'checking' | 'not_found' | 'failed';
 
 export interface AuthState {
   status: LoginStatus;
@@ -10,7 +11,9 @@ export interface AuthState {
   owner: string | null;
   token: string | null;
   tokenError: string | null;
+  installCheck: InstallCheck;
   checkLogin(): Promise<void>;
+  recheckInstall(): Promise<void>;
   selectOwner(repoOwner: string | null): void;
   requestToken(): Promise<void>;
   renewRejectedToken(): void;
@@ -23,6 +26,7 @@ const signedOut = {
   owner: null,
   token: null,
   tokenError: null,
+  installCheck: 'idle' as InstallCheck,
 };
 
 const same = (a: string | null | undefined, b: string | null | undefined): boolean =>
@@ -30,6 +34,9 @@ const same = (a: string | null | undefined, b: string | null | undefined): boole
 
 export const isInstalled = ({ accounts, owner }: Pick<AuthState, 'accounts' | 'owner'>): boolean =>
   accounts.some((account) => same(account.login, owner));
+
+export const needsInstall = (state: Pick<AuthState, 'status' | 'accounts' | 'owner'>): boolean =>
+  state.status === 'signed_in' && !isInstalled(state);
 
 const RENEW_MARGIN_MS = 5 * 60e3;
 const MIN_RENEW_DELAY_MS = 60e3;
@@ -51,6 +58,25 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
 
+  async recheckInstall() {
+    const { status, installCheck } = get();
+    if (status !== 'signed_in' || installCheck === 'checking') return;
+    set({ installCheck: 'checking' });
+    try {
+      const { login, accounts } = await fetchMe();
+      if (get().status !== 'signed_in') return;
+      const { owner } = get();
+      set({ login, accounts, installCheck: 'idle' });
+      const current = get();
+      if (!isInstalled(current)) set({ installCheck: 'not_found' });
+      else if (same(current.owner, owner) && !current.token) void get().requestToken();
+    } catch (e) {
+      if (get().status !== 'signed_in') return;
+      if (e instanceof NotSignedInError) set({ status: 'signed_out', ...signedOut });
+      else set({ installCheck: 'failed' });
+    }
+  },
+
   selectOwner(repoOwner) {
     const { status, login, accounts, owner } = get();
     if (status !== 'signed_in') return;
@@ -59,7 +85,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (same(next, owner)) return;
     tokenRun++;
     clearTimeout(renewTimer);
-    set({ owner: next, token: null, tokenError: null });
+    set({ owner: next, token: null, tokenError: null, installCheck: 'idle' });
     if (isInstalled(get())) void get().requestToken();
   },
 
