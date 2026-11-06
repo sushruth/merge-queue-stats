@@ -1,6 +1,6 @@
 # <img src="public/books.svg" width="28" height="28" alt=""> Merge Queue Stats
 
-![The Merge Queue Stats page asking for a GitHub token](docs/screenshot.png)
+![Queue stats, one row per pull request, and histograms along the chart's edges](docs/chart.png)
 
 See how a GitHub merge queue is performing: every pull request's time in the queue, CI results, wait times and merge rate.
 
@@ -15,6 +15,8 @@ The share button copies a link with the repo, branch, workflow and date range in
 ```
 
 ## Token
+
+![The Merge Queue Stats page asking for a GitHub token](docs/screenshot.png)
 
 The quickest token is your gh login: run `gh auth token | pbcopy` and paste it into the page. It has the same access as your gh login. For read-only access, create a fine-grained token that can read pull requests, metadata and actions. The token is kept in this browser's localStorage until you press the forget button. On a shared `*.github.io` origin, other project pages on that origin can read localStorage, so prefer a fine-grained, read-only token.
 
