@@ -1,4 +1,4 @@
-import { Trash } from '@phosphor-icons/react';
+import { SignOut } from '@phosphor-icons/react';
 import { useMemo, useState } from 'preact/hooks';
 import { workflowLabels } from '../core/options';
 import { useAuth } from '../stores/auth';
@@ -79,13 +79,13 @@ export function RepoControls({ derived }: { derived: Derived }) {
   );
 }
 
-export function ForgetToken() {
-  const hasToken = useAuth((s) => s.token !== null);
-  const clearToken = useAuth((s) => s.clearToken);
-  if (!hasToken) return null;
+export function LogOut() {
+  const signedIn = useAuth((s) => s.status === 'signed_in');
+  const logOut = useAuth((s) => s.logOut);
+  if (!signedIn) return null;
   return (
-    <button type="button" class="bare" aria-label="Forget token" title="Forget token" onClick={clearToken}>
-      <Trash size={18} aria-hidden="true" />
+    <button type="button" class="bare" aria-label="Log out" title="Log out" onClick={() => void logOut()}>
+      <SignOut size={18} aria-hidden="true" />
     </button>
   );
 }

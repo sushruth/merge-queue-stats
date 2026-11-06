@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cacheKey } from '../core/storage';
-import { useAuth } from './auth';
+import { isInstalled, useAuth } from './auth';
 import { startApp } from './bootstrap';
 import { useData } from './data';
 import { useSettings } from './settings';
@@ -35,6 +35,15 @@ const healthy: Route = (query) => {
   return { body: { total_count: 0, workflow_runs: [] } };
 };
 
+const signIn = (token = 't') =>
+  useAuth.setState({
+    status: 'signed_in',
+    login: 'me',
+    accounts: [{ login: 'acme', type: 'Organization' }],
+    owner: 'acme',
+    token,
+  });
+
 const settle = () => vi.advanceTimersByTimeAsync(1);
 
 describe('stores', () => {
@@ -45,7 +54,7 @@ describe('stores', () => {
     vi.setSystemTime(NOW);
     quota().clear();
     useSettings.setState({ repo: null, branch: null, workflowByRepo: {} });
-    useAuth.setState({ token: null });
+    useAuth.setState({ status: 'signed_out', login: null, accounts: [], owner: null, token: null, tokenError: null });
     stop = startApp();
   });
   afterEach(() => {
@@ -66,7 +75,7 @@ describe('stores', () => {
   it('resolves the default branch, then syncs, and only calls api.github.com', async () => {
     const { urls } = stubGitHub(healthy);
     useSettings.getState().setRepo('acme/widgets');
-    useAuth.getState().setToken('t');
+    signIn('t');
     await settle();
     expect(useSettings.getState().branch).toBe('trunk');
     expect(useData.getState().queueState).toBe('ready');
@@ -96,11 +105,13 @@ describe('stores', () => {
     localStorage.setItem(key, JSON.stringify({ prs: { 1: [[1, 2, 'merged']] } }));
     useSettings.getState().setRepo('acme/widgets', 'main');
     const writes = vi.spyOn(localStorage, 'setItem');
-    useAuth.getState().setToken('secret-token');
+    signIn('secret-token');
     await settle();
     expect(writes.mock.calls.flat().join()).not.toContain('secret-token');
 
-    useAuth.getState().clearToken();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"ok":true}')));
+    await useAuth.getState().logOut();
+    expect(useAuth.getState().status).toBe('signed_out');
     expect(useAuth.getState().token).toBeNull();
     expect(localStorage.getItem(key)).toContain('"1"');
     expect(Object.keys(useData.getState().attempts.prs)).toEqual(['1']);
@@ -110,10 +121,45 @@ describe('stores', () => {
     expect(fetch.mock.calls.length).toBe(calls);
   });
 
+  it('asks the login service for a token for the repo owner', async () => {
+    const authCalls: [string, RequestInit | undefined][] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: URL | string, init?: RequestInit) => {
+      const href = String(url);
+      if (href.endsWith('/me')) return new Response(JSON.stringify({ login: 'me', accounts: [{ login: 'Acme', type: 'Organization' }] }));
+      if (href.endsWith('/token')) {
+        authCalls.push([href, init]);
+        return new Response(JSON.stringify({ token: 'scoped', expires_at: null }));
+      }
+      return new Response(JSON.stringify({ data: { repository: { defaultBranchRef: { name: 'trunk' } } } }));
+    }));
+    useSettings.getState().setRepo('acme/widgets');
+    await useAuth.getState().checkLogin();
+    await settle();
+    expect(authCalls.map(([, init]) => init?.body)).toEqual(['{"target":"acme"}']);
+    expect(useAuth.getState().token).toBe('scoped');
+  });
+
+  it('asks for no token when the app is not installed on the repo owner', async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ login: 'me', accounts: [{ login: 'other', type: 'User' }] })));
+    vi.stubGlobal('fetch', fetch);
+    useSettings.getState().setRepo('acme/widgets');
+    await useAuth.getState().checkLogin();
+    await settle();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(useAuth.getState().token).toBeNull();
+    expect(isInstalled(useAuth.getState())).toBe(false);
+  });
+
+  it('shows the login when the service says not signed in', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"error":"not_signed_in"}', { status: 401 })));
+    await useAuth.getState().checkLogin();
+    expect(useAuth.getState().status).toBe('signed_out');
+  });
+
   it('does not overlap the same action', async () => {
     const { fetch } = stubGitHub(healthy);
     useSettings.getState().setRepo('acme/widgets', 'main');
-    useAuth.getState().setToken('t');
+    signIn('t');
     await settle();
     fetch.mockClear();
     const { refreshLive } = useData.getState();
@@ -128,7 +174,7 @@ describe('stores', () => {
         : healthy(query, ''),
     );
     useSettings.getState().setRepo('acme/widgets', 'main');
-    useAuth.getState().setToken('t');
+    signIn('t');
     await settle();
     expect(useData.getState().queueState).toBe('no_queue');
     expect(urls.length).toBe(1);
@@ -138,7 +184,7 @@ describe('stores', () => {
     let denied = true;
     const { fetch } = stubGitHub((q, u) => (denied ? { status: 401, body: {} } : healthy(q, u)));
     useSettings.getState().setRepo('acme/widgets', 'main');
-    useAuth.getState().setToken('bad');
+    signIn('bad');
     await settle();
     expect(useData.getState().authError).toBe(true);
 
@@ -147,7 +193,7 @@ describe('stores', () => {
     expect(fetch.mock.calls.length).toBe(calls);
 
     denied = false;
-    useAuth.getState().setToken('good');
+    signIn('good');
     await settle();
     expect(useData.getState().authError).toBe(false);
     expect(useData.getState().queueState).toBe('ready');
@@ -166,7 +212,7 @@ describe('stores', () => {
         : healthy(q, u),
     );
     useSettings.getState().setRepo('acme/widgets', 'main');
-    useAuth.getState().setToken('t');
+    signIn('t');
     await settle();
     expect(useData.getState().rateLimitedUntil).toBe(resetAt);
 
@@ -184,7 +230,7 @@ describe('stores', () => {
     stubGitHub(healthy);
     useSettings.getState().setRepo('acme/widgets', 'main');
     quota().quotaExceeded = true;
-    useAuth.getState().setToken('t');
+    signIn('t');
     await settle();
     expect(useData.getState().storageError).toBe('quota');
     expect(useData.getState().attempts.backfillDone).toBe(true);

@@ -1,4 +1,5 @@
 import { createPoller } from '../core/poller';
+import { parseRepo } from '../core/repo';
 import { useAuth } from './auth';
 import { useData } from './data';
 import { useSettings } from './settings';
@@ -10,6 +11,7 @@ export function startApp(): () => void {
 
   const reconcile = (): void => {
     const { repo, branch } = useSettings.getState();
+    useAuth.getState().selectOwner(parseRepo(repo)?.owner ?? null);
     const { token } = useAuth.getState();
     if (last && last[0] === repo && last[1] === branch && last[2] === token) return;
     last = [repo, branch, token];

@@ -112,7 +112,6 @@ input:focus, select:focus { outline: 0; border-bottom-color: var(--accent); }
 select { max-width: 220px; cursor: pointer; }
 option { background: var(--bg); color: var(--text); }
 input[type="date"] { width: 8.6em; }
-.masked { -webkit-text-security: disc; }
 
 button.bare {
   font: inherit;
@@ -133,11 +132,6 @@ button.selected { color: var(--text); font-weight: 600; border-bottom-color: var
 .fit input { grid-area: 1 / 1; width: 100%; }
 .setup { display: flex; flex-direction: column; gap: 20px; max-width: 520px; margin: 14vh auto 0; }
 .setup-compact { margin: 32px auto 56px; }
-.setup-step { display: flex; flex-direction: column; gap: 6px; }
-.setup-command { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 1px 0; border-bottom: 1px solid var(--line); }
-.setup-command code { font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
-.setup-command button { display: inline-flex; }
-.setup input { width: 100%; }
 .header-actions { flex: none; display: inline-flex; align-items: center; gap: 12px; }
 .header-actions button { display: inline-flex; align-items: center; gap: 4px; }
 

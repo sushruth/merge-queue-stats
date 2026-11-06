@@ -1,15 +1,15 @@
 import { DAY_MS } from './core/attempts';
 import { fmtDay, fmtMin, fmtPct } from './core/format';
 import { Tooltip } from './components/Tooltip';
-import { ForgetToken, RepoControls } from './components/Controls';
+import { LogOut, RepoControls } from './components/Controls';
 import { DayChart } from './components/DayChart';
 import { LineChart } from './components/LineChart';
+import { LoginSetup } from './components/LoginSetup';
 import { PrChart } from './components/PrChart';
 import { ShareButton } from './components/ShareButton';
 import { Stats } from './components/Stats';
 import { Status, StatusFacts } from './components/Status';
 import { HistoryTables, LiveTable } from './components/Tables';
-import { TokenSetup } from './components/TokenSetup';
 import { useData } from './stores/data';
 import { useDerived } from './stores/derived';
 import { usePhase } from './stores/phase';
@@ -40,11 +40,11 @@ export function App() {
         <StatusFacts />
         <span class="header-actions">
           <ShareButton />
-          <ForgetToken />
+          <LogOut />
         </span>
       </header>
       <Status />
-      <TokenSetup compact={attempts.length > 0} />
+      <LoginSetup compact={attempts.length > 0} />
       {attempts.length > 0 ? (
         <>
           <Stats derived={derived} />

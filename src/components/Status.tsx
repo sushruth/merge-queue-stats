@@ -9,11 +9,11 @@ function phaseMessage(phase: Phase, repo: string | null, branch: string | null, 
     case 'needs_repo':
       return 'Enter a repo as owner/name to start.';
     case 'auth_error':
-      return 'GitHub rejected this token. It may be wrong, expired or missing access. Paste another one below.';
+      return 'GitHub rejected the token from your login. Log in again below.';
     case 'rate_limited':
       return `GitHub's rate limit is used up.${until ? ` Checks resume after ${fmtClock(until)} UTC.` : ''}`;
     case 'repo_not_found':
-      return `GitHub can't find ${repo}. It may not exist, or this token can't read it.`;
+      return `GitHub can't find ${repo}. It may not exist, or the usually-frustrated GitHub App may not have access to it.`;
     case 'empty_repo':
       return `${repo} has no default branch yet. Enter a branch.`;
     case 'no_queue':
