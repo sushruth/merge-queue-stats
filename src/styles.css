@@ -132,6 +132,25 @@ button.selected { color: var(--text); font-weight: 600; border-bottom-color: var
 .fit input { grid-area: 1 / 1; width: 100%; }
 .setup { display: flex; flex-direction: column; gap: 20px; max-width: 520px; margin: 14vh auto 0; }
 .setup-compact { margin: 32px auto 56px; }
+.install-steps { display: flex; flex-direction: column; gap: 20px; margin: 0; padding: 0; list-style: none; }
+.install-steps li { display: flex; gap: 10px; }
+.install-marker { flex: none; width: 18px; color: var(--text-3); text-align: center; }
+.install-marker svg { display: block; margin-top: 1px; color: var(--s3); }
+.install-action { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; min-width: 0; }
+.install-action p { flex: 1 1 200px; }
+.install-check { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.install-check button.bare { padding: 10px 0; border-bottom-color: var(--line); }
+a.primary {
+  display: inline-block;
+  padding: 11px 16px;
+  color: var(--bg);
+  background: var(--text);
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+}
+a.primary:hover { opacity: 0.85; }
+a.primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .header-actions { flex: none; display: inline-flex; align-items: center; gap: 12px; }
 .header-actions button { display: inline-flex; align-items: center; gap: 4px; }
 
