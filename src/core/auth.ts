@@ -29,7 +29,7 @@ export function loginUrl(returnTo: string): string {
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await globalThis.fetch(`${AUTH_ORIGIN}${path}`, { ...init, credentials: 'include' });
+  const res = await globalThis.fetch(`${AUTH_ORIGIN}${path}`, { ...init, credentials: 'include', cache: 'no-store' });
   if (res.status === 401) throw new NotSignedInError();
   const body = (await res.json().catch(() => ({}))) as { error?: unknown };
   if (!res.ok) throw new Error(typeof body.error === 'string' ? body.error : `HTTP ${res.status}`);

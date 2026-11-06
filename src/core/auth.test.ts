@@ -21,6 +21,7 @@ describe('auth service client', () => {
     await expect(fetchMe()).resolves.toMatchObject({ login: 'me' });
     expect(fetch.mock.calls[0]![0]).toBe('https://auth.frustrated.dev/me');
     expect(fetch.mock.calls[0]![1]?.credentials).toBe('include');
+    expect(fetch.mock.calls[0]![1]?.cache).toBe('no-store');
   });
 
   it('treats 401 as not signed in', async () => {
