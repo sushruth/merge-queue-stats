@@ -4,21 +4,21 @@
 
 See how a GitHub merge queue is performing: every pull request's time in the queue, CI results, wait times and merge rate.
 
-Open the page, paste a GitHub token and pick a repo. The page talks straight to api.github.com from your browser. There is no server.
+Open [mergeq.frustrated.dev](https://mergeq.frustrated.dev), log in with GitHub and pick a repo. The page talks straight to api.github.com from your browser.
+
+The repo's owner needs the [usually-frustrated GitHub App](https://github.com/apps/usually-frustrated/installations/new) installed. The page shows that link when it is missing.
 
 ## Sharing a view
 
-The share button copies a link with the repo, branch, workflow and date range in the query string. The token is never in the link, so each viewer uses their own.
+The share button copies a link with the repo, branch, workflow and date range in the query string. Each viewer logs in as themselves.
 
 ```
 ?repo=owner/name&branch=main&days=14
 ```
 
-## Token
+## Login
 
-![The Merge Queue Stats page asking for a GitHub token](docs/screenshot.png)
-
-The quickest token is your gh login: run `gh auth token | pbcopy` and paste it into the page. It has the same access as your gh login. For read-only access, create a fine-grained token that can read pull requests, metadata and actions. The token is kept in this browser's localStorage until you press the forget button. On a shared `*.github.io` origin, other project pages on that origin can read localStorage, so prefer a fine-grained, read-only token.
+Logging in goes through auth.frustrated.dev, which keeps the session in a cookie and issues a read-only GitHub token for one account at a time. The page holds that token in memory and asks for a new one when it nears expiry or GitHub rejects it. Nothing about the token goes into localStorage.
 
 ## Develop
 
@@ -29,7 +29,9 @@ pnpm typecheck
 pnpm test
 ```
 
-Pushes to `main` deploy to GitHub Pages.
+`pnpm dev` runs on localhost, where the login service refuses requests, so GitHub data only loads on the deployed page.
+
+Pushes to `main` deploy to Cloudflare through `.github/workflows/deploy.yml`, which needs a `CLOUDFLARE_API_TOKEN` secret. `pnpm run deploy` does the same from your machine.
 
 ## License
 
