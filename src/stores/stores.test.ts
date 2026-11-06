@@ -180,12 +180,22 @@ describe('stores', () => {
     expect(urls.length).toBe(1);
   });
 
-  it('stops on 401 until a new token is set', async () => {
+  it('gets a fresh token when GitHub returns 401, and stops if that one is rejected too', async () => {
     let denied = true;
-    const { fetch } = stubGitHub((q, u) => (denied ? { status: 401, body: {} } : healthy(q, u)));
+    const tokens: string[] = [];
+    const { fetch } = stubGitHub((q, u) => {
+      if (u.endsWith('/token')) {
+        tokens.push('fresh');
+        return { body: { token: 'fresh', expires_at: null } };
+      }
+      return denied ? { status: 401, body: {} } : healthy(q, u);
+    });
     useSettings.getState().setRepo('acme/widgets', 'main');
-    signIn('bad');
+    vi.setSystemTime(NOW + 60 * 60e3);
+    signIn('old');
     await settle();
+    expect(tokens.length).toBe(1);
+    expect(useAuth.getState().token).toBe('fresh');
     expect(useData.getState().authError).toBe(true);
 
     const calls = fetch.mock.calls.length;
@@ -197,6 +207,23 @@ describe('stores', () => {
     await settle();
     expect(useData.getState().authError).toBe(false);
     expect(useData.getState().queueState).toBe('ready');
+  });
+
+  it('renews the token before it expires', async () => {
+    let issued = 0;
+    stubGitHub((q, u) => {
+      if (!u.endsWith('/token')) return healthy(q, u);
+      issued += 1;
+      return { body: { token: `t${issued}`, expires_at: new Date(Date.now() + 8 * 3600e3).toISOString() } };
+    });
+    useSettings.getState().setRepo('acme/widgets', 'main');
+    useAuth.setState({ status: 'signed_in', login: 'me', accounts: [{ login: 'acme', type: 'Organization' }], owner: 'acme' });
+    await useAuth.getState().requestToken();
+    expect(useAuth.getState().token).toBe('t1');
+    await vi.advanceTimersByTimeAsync(8 * 3600e3 - 5 * 60e3 - 1000);
+    expect(useAuth.getState().token).toBe('t1');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(useAuth.getState().token).toBe('t2');
   });
 
   it('pauses on a rate limit until the reset time', async () => {

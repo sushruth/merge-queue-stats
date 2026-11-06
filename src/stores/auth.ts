@@ -13,6 +13,7 @@ export interface AuthState {
   checkLogin(): Promise<void>;
   selectOwner(repoOwner: string | null): void;
   requestToken(): Promise<void>;
+  renewRejectedToken(): void;
   logOut(): Promise<void>;
 }
 
@@ -30,7 +31,12 @@ const same = (a: string | null | undefined, b: string | null | undefined): boole
 export const isInstalled = ({ accounts, owner }: Pick<AuthState, 'accounts' | 'owner'>): boolean =>
   accounts.some((account) => same(account.login, owner));
 
+const RENEW_MARGIN_MS = 5 * 60e3;
+const MIN_RENEW_DELAY_MS = 60e3;
+
 let tokenRun = 0;
+let tokenIssuedAt = 0;
+let renewTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useAuth = create<AuthState>((set, get) => ({
   status: 'checking',
@@ -52,6 +58,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     const next = repoOwner ?? owner ?? fallback?.login ?? null;
     if (same(next, owner)) return;
     tokenRun++;
+    clearTimeout(renewTimer);
     set({ owner: next, token: null, tokenError: null });
     if (isInstalled(get())) void get().requestToken();
   },
@@ -60,9 +67,17 @@ export const useAuth = create<AuthState>((set, get) => ({
     const { owner } = get();
     if (!owner) return;
     const run = ++tokenRun;
+    clearTimeout(renewTimer);
     try {
-      const { token } = await fetchToken(owner);
-      if (run === tokenRun) set({ token, tokenError: null });
+      const { token, expires_at } = await fetchToken(owner);
+      if (run !== tokenRun) return;
+      tokenIssuedAt = Date.now();
+      const expiresAt = Date.parse(expires_at ?? '');
+      if (expiresAt) {
+        const delay = Math.max(expiresAt - RENEW_MARGIN_MS - tokenIssuedAt, MIN_RENEW_DELAY_MS);
+        renewTimer = setTimeout(() => void get().requestToken(), delay);
+      }
+      set({ token, tokenError: null });
     } catch (e) {
       if (run !== tokenRun) return;
       if (e instanceof NotSignedInError) set({ status: 'signed_out', ...signedOut });
@@ -70,8 +85,13 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
 
+  renewRejectedToken() {
+    if (Date.now() - tokenIssuedAt >= MIN_RENEW_DELAY_MS) void get().requestToken();
+  },
+
   async logOut() {
     tokenRun++;
+    clearTimeout(renewTimer);
     set({ token: null, tokenError: null });
     try {
       await logOut();

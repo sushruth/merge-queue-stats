@@ -20,7 +20,13 @@ export function startApp(): () => void {
     if (repo && token) poller.start();
   };
 
-  const unsubscribers = [useSettings.subscribe(reconcile), useAuth.subscribe(reconcile)];
+  const unsubscribers = [
+    useSettings.subscribe(reconcile),
+    useAuth.subscribe(reconcile),
+    useData.subscribe((state, previous) => {
+      if (state.authError && !previous.authError) useAuth.getState().renewRejectedToken();
+    }),
+  ];
   reconcile();
 
   return () => {
